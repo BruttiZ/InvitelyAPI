@@ -58,6 +58,27 @@ func RunMigrations(db *sql.DB) error {
 			updated_at timestamptz not null default now(),
 			unique (guest_id)
 		)`,
+		`alter table events add column if not exists tenant_id uuid`,
+		`alter table events add column if not exists title text`,
+		`alter table events add column if not exists description text not null default ''`,
+		`alter table events add column if not exists starts_at timestamptz`,
+		`alter table events add column if not exists ends_at timestamptz`,
+		`alter table events add column if not exists location text not null default ''`,
+		`alter table events add column if not exists slug text`,
+		`alter table events add column if not exists created_at timestamptz not null default now()`,
+		`alter table events add column if not exists updated_at timestamptz not null default now()`,
+		`alter table guests add column if not exists event_id uuid`,
+		`alter table guests add column if not exists name text`,
+		`alter table guests add column if not exists email text`,
+		`alter table guests add column if not exists phone text not null default ''`,
+		`alter table guests add column if not exists status text not null default 'invited'`,
+		`alter table guests add column if not exists created_at timestamptz not null default now()`,
+		`alter table guests add column if not exists updated_at timestamptz not null default now()`,
+		`alter table rsvps add column if not exists guest_id uuid`,
+		`alter table rsvps add column if not exists event_id uuid`,
+		`alter table rsvps add column if not exists status text`,
+		`alter table rsvps add column if not exists created_at timestamptz not null default now()`,
+		`alter table rsvps add column if not exists updated_at timestamptz not null default now()`,
 	}
 
 	for _, statement := range statements {
