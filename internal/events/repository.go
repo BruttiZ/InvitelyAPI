@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 )
 
 type Repository interface {
@@ -21,13 +22,24 @@ func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 
 func (r *PostgresRepository) Create(ctx context.Context, event Event) (Event, error) {
 	query := `
-		insert into events (id, tenant_id, title, description, starts_at, ends_at, location, slug)
-		values ($1, $2, $3, $4, $5, $6, $7, $8)
-		returning id, tenant_id, title, description, starts_at, coalesce(ends_at, starts_at), location, slug, created_at, updated_at`
+		insert into events (
+			id, tenant_id, title, name, description, starts_at, ends_at, location, venue_name, address,
+			slug, status, timezone, hero, content, theme, gallery, seo
+		)
+		values (
+			$1, $2, $3, $3, $4, $5, $6, $7, $7, $7,
+			$8, 'published', 'America/Sao_Paulo', $9::json, $10::json, $11::json, $12::json, $13::json
+		)
+		returning id, tenant_id, coalesce(title, name), description, starts_at, coalesce(ends_at, starts_at), coalesce(location, venue_name, ''), slug, created_at, updated_at`
 	var endsAt any
 	if !event.EndsAt.IsZero() {
 		endsAt = event.EndsAt
 	}
+	hero := mustJSON(map[string]string{"title": event.Title})
+	content := mustJSON(map[string]string{"description": event.Description})
+	theme := mustJSON(map[string]string{"primary": "#8B5CF6", "accent": "#0EA5E9"})
+	emptyArray := mustJSON([]string{})
+	seo := mustJSON(map[string]string{"title": event.Title})
 
 	err := r.db.QueryRowContext(ctx, query,
 		event.ID,
@@ -38,9 +50,23 @@ func (r *PostgresRepository) Create(ctx context.Context, event Event) (Event, er
 		endsAt,
 		event.Location,
 		event.Slug,
+		hero,
+		content,
+		theme,
+		emptyArray,
+		seo,
 	).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.CreatedAt, &event.UpdatedAt)
 
 	return event, err
+}
+
+func mustJSON(value any) string {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return "{}"
+	}
+
+	return string(data)
 }
 
 func (r *PostgresRepository) FindByID(ctx context.Context, id string) (Event, error) {
