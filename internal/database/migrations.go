@@ -80,6 +80,20 @@ func RunMigrations(db *sql.DB) error {
 			created_at timestamptz not null default now(),
 			updated_at timestamptz not null default now()
 		)`,
+		`create table if not exists event_reminder_campaigns (
+			id uuid primary key,
+			event_id uuid not null references events(id) on delete cascade,
+			from_email text not null,
+			recipients json not null default '[]'::json,
+			recipient_count integer not null default 0,
+			subject text not null,
+			message text not null,
+			status text not null default 'queued',
+			provider_message_id text not null default '',
+			error_message text not null default '',
+			created_at timestamptz not null default now(),
+			updated_at timestamptz not null default now()
+		)`,
 		`alter table events add column if not exists tenant_id uuid`,
 		`alter table events add column if not exists name text`,
 		`alter table events add column if not exists title text`,
@@ -129,6 +143,17 @@ func RunMigrations(db *sql.DB) error {
 		`alter table event_gifts add column if not exists reserved_by text not null default ''`,
 		`alter table event_gifts add column if not exists created_at timestamptz not null default now()`,
 		`alter table event_gifts add column if not exists updated_at timestamptz not null default now()`,
+		`alter table event_reminder_campaigns add column if not exists event_id uuid`,
+		`alter table event_reminder_campaigns add column if not exists from_email text`,
+		`alter table event_reminder_campaigns add column if not exists recipients json not null default '[]'::json`,
+		`alter table event_reminder_campaigns add column if not exists recipient_count integer not null default 0`,
+		`alter table event_reminder_campaigns add column if not exists subject text`,
+		`alter table event_reminder_campaigns add column if not exists message text`,
+		`alter table event_reminder_campaigns add column if not exists status text not null default 'queued'`,
+		`alter table event_reminder_campaigns add column if not exists provider_message_id text not null default ''`,
+		`alter table event_reminder_campaigns add column if not exists error_message text not null default ''`,
+		`alter table event_reminder_campaigns add column if not exists created_at timestamptz not null default now()`,
+		`alter table event_reminder_campaigns add column if not exists updated_at timestamptz not null default now()`,
 	}
 
 	for _, statement := range statements {

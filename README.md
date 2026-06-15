@@ -40,6 +40,7 @@ curl http://localhost:8080/health
 - `GET /events/{id}`
 - `PUT /events/{id}`
 - `DELETE /events/{id}`
+- `POST /events/{id}/reminders`
 - `GET /events/{id}/budget`
 - `POST /events/{id}/budget`
 - `PUT /budget/{id}`

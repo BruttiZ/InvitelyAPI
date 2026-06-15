@@ -39,6 +39,7 @@ internal/database            Conexao PostgreSQL e migrations
 internal/middleware          Auth, CORS e autorizacao por papel
 internal/auth                Login, cadastro e usuario atual
 internal/events              Eventos
+internal/reminders           Campanhas de lembrete de RSVP
 internal/guests              Convidados
 internal/rsvp                Confirmacao de presenca
 internal/dashboard           Visao geral do painel
@@ -137,6 +138,7 @@ Rotas publicas:
 Rotas protegidas exigem token:
 
 - Eventos
+- Lembretes
 - Convidados
 - Orcamento
 - Presentes
@@ -431,6 +433,78 @@ Resposta:
 ```http
 204 No Content
 ```
+
+## Lembretes
+
+Lembretes permitem que o organizador dispare uma campanha de e-mail para convidados de um evento. A API valida os dados, garante que o evento pertence ao tenant autenticado e registra a campanha com status `queued`.
+
+Atualmente a API persiste a campanha e deixa os e-mails enfileirados logicamente. O envio real pode ser conectado depois a um provedor de e-mail ou fila.
+
+### `POST /events/{id}/reminders`
+
+Cria uma campanha de lembrete de RSVP para um evento.
+
+Autenticacao: obrigatoria.
+
+Limites e validacoes:
+
+- `id` precisa ser um evento existente.
+- O evento precisa pertencer ao tenant autenticado.
+- `from_email` precisa ser um e-mail valido.
+- `recipients` precisa ter pelo menos 1 e-mail valido.
+- `recipients` aceita no maximo 200 e-mails por requisicao.
+- `subject` e obrigatorio.
+- `message` e obrigatoria.
+- E-mails duplicados em `recipients` sao ignorados na contagem final.
+
+Body:
+
+```json
+{
+  "from_email": "organizador@example.com",
+  "recipients": [
+    "convidado1@example.com",
+    "convidado2@example.com"
+  ],
+  "subject": "Lembrete: confirme sua presenca no evento",
+  "message": "Oi! Passando para lembrar voce de confirmar presenca."
+}
+```
+
+Resposta `202`:
+
+```json
+{
+  "data": {
+    "campaign_id": "uuid",
+    "event_id": "uuid",
+    "queued": 2,
+    "status": "queued"
+  }
+}
+```
+
+Erro de validacao `422`:
+
+```json
+{
+  "error": "validation failed",
+  "data": [
+    {
+      "field": "recipients",
+      "message": "recipients must contain at least one email"
+    }
+  ]
+}
+```
+
+Possiveis erros:
+
+- `400`: corpo JSON invalido.
+- `401`: token ausente ou invalido.
+- `403`: evento pertence a outra organizacao.
+- `404`: evento nao encontrado.
+- `422`: campos invalidos.
 
 ## Convidados
 
@@ -756,6 +830,7 @@ Se nao for configurado, o fallback atual e `*`.
 | GET | `/events/{id}` | Sim | Busca evento |
 | PUT | `/events/{id}` | Sim | Atualiza evento |
 | DELETE | `/events/{id}` | Sim | Remove evento |
+| POST | `/events/{id}/reminders` | Sim | Enfileira lembretes de RSVP |
 | GET | `/guests?event_id={id}` | Sim | Lista convidados |
 | POST | `/guests` | Sim | Cria convidado |
 | POST | `/rsvp` | Nao | Envia confirmacao |
@@ -778,3 +853,4 @@ Se nao for configurado, o fallback atual e `*`.
 - Ao receber `404` em recurso protegido, trate como inexistente para o usuario atual.
 - `DELETE` com sucesso retorna `204` e nao deve tentar ler JSON no corpo.
 - Orcamento e presentes agora sao persistidos na API, nao precisam mais ficar apenas no navegador.
+- Lembretes de RSVP agora podem ser enviados pelo backend em `POST /events/{id}/reminders`; no app Laravel, liberar o proxy `events/*/reminders`.

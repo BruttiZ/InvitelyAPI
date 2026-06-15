@@ -17,6 +17,7 @@ import (
 	"invitely-api/internal/gifts"
 	"invitely-api/internal/guests"
 	"invitely-api/internal/middleware"
+	"invitely-api/internal/reminders"
 	"invitely-api/internal/rsvp"
 )
 
@@ -31,6 +32,11 @@ func Register(router *gin.Engine, cfg config.Config, db *sql.DB) {
 	guestsHandler := guests.NewHandler(guests.NewService(guests.NewPostgresRepository(db)))
 	budgetHandler := budget.NewHandler(budget.NewService(budget.NewPostgresRepository(db)))
 	giftsHandler := gifts.NewHandler(gifts.NewService(gifts.NewPostgresRepository(db)))
+	remindersHandler := reminders.NewHandler(reminders.NewService(
+		reminders.NewPostgresRepository(db),
+		events.NewPostgresRepository(db),
+		reminders.NewBrevoSender(cfg.BrevoAPIKey, cfg.BrevoFromName),
+	))
 	rsvpHandler := rsvp.NewHandler(rsvp.NewService(rsvp.NewPostgresRepository(db)))
 	dashboardHandler := dashboard.NewHandler(dashboard.NewService(db))
 	analyticsHandler := analytics.NewHandler(analytics.NewService(db))
@@ -68,6 +74,7 @@ func Register(router *gin.Engine, cfg config.Config, db *sql.DB) {
 	protected.GET("/events/:id", eventsHandler.Show)
 	protected.PUT("/events/:id", eventsHandler.Update)
 	protected.DELETE("/events/:id", eventsHandler.Delete)
+	protected.POST("/events/:id/reminders", remindersHandler.Send)
 	protected.GET("/events/:id/budget", budgetHandler.List)
 	protected.POST("/events/:id/budget", budgetHandler.Create)
 	protected.PUT("/budget/:id", budgetHandler.Update)

@@ -9,6 +9,8 @@ type Config struct {
 	SupabaseAnonKey    string
 	SupabaseServiceKey string
 	CORSAllowedOrigins string
+	BrevoAPIKey        string
+	BrevoFromName      string
 }
 
 func Load() Config {
@@ -21,5 +23,7 @@ func Load() Config {
 		SupabaseAnonKey:    GetEnv("SUPABASE_ANON_KEY", GetEnv("SUPABASE_KEY", "")),
 		SupabaseServiceKey: GetEnv("SUPABASE_SERVICE_ROLE_KEY", ""),
 		CORSAllowedOrigins: GetEnv("CORS_ALLOWED_ORIGINS", "*"),
+		BrevoAPIKey:        GetEnv("BREVO_API_KEY", ""),
+		BrevoFromName:      GetEnv("BREVO_FROM_NAME", "Invitely"),
 	}
 }
