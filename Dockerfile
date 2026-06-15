@@ -1,3 +1,10 @@
+FROM golang:1.22-alpine AS dev
+
+WORKDIR /app
+RUN apk add --no-cache ca-certificates
+EXPOSE 8080
+CMD ["sh", "./scripts/dev-watch.sh"]
+
 FROM golang:1.22-alpine AS build
 
 WORKDIR /app

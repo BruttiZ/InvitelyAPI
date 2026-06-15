@@ -1,4 +1,4 @@
-package events
+package budget
 
 import (
 	"database/sql"
@@ -25,13 +25,13 @@ func (h *Handler) List(c *gin.Context) {
 		return
 	}
 
-	events, err := h.service.List(c.Request.Context(), user.TenantID)
+	items, err := h.service.ListByEvent(c.Request.Context(), user.TenantID, c.Param("id"))
 	if err != nil {
 		common.GinError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	common.GinJSON(c, http.StatusOK, common.Response{Data: events})
+	common.GinJSON(c, http.StatusOK, common.Response{Data: items})
 }
 
 func (h *Handler) Create(c *gin.Context) {
@@ -41,43 +41,23 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	var request CreateEventRequest
+	var request CreateItemRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		common.GinError(c, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	event, err := h.service.Create(c.Request.Context(), user.TenantID, request)
-	if err != nil {
-		common.GinError(c, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	common.GinJSON(c, http.StatusCreated, common.Response{Data: event})
-}
-
-func (h *Handler) Show(c *gin.Context) {
-	user, ok := middleware.GinUser(c)
-	if !ok {
-		common.GinError(c, http.StatusUnauthorized, "unauthenticated")
-		return
-	}
-
-	event, err := h.service.FindByID(c.Request.Context(), c.Param("id"))
+	item, err := h.service.Create(c.Request.Context(), user.TenantID, c.Param("id"), request)
 	if err == sql.ErrNoRows {
 		common.GinError(c, http.StatusNotFound, "event not found")
 		return
 	}
 	if err != nil {
-		common.GinError(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if event.TenantID != user.TenantID && user.Role != "platform_admin" {
-		common.GinError(c, http.StatusNotFound, "event not found")
+		common.GinError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	common.GinJSON(c, http.StatusOK, common.Response{Data: event})
+	common.GinJSON(c, http.StatusCreated, common.Response{Data: item})
 }
 
 func (h *Handler) Update(c *gin.Context) {
@@ -87,15 +67,15 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	var request UpdateEventRequest
+	var request UpdateItemRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		common.GinError(c, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	event, err := h.service.Update(c.Request.Context(), user.TenantID, c.Param("id"), request)
+	item, err := h.service.Update(c.Request.Context(), user.TenantID, c.Param("id"), request)
 	if err == sql.ErrNoRows {
-		common.GinError(c, http.StatusNotFound, "event not found")
+		common.GinError(c, http.StatusNotFound, "budget item not found")
 		return
 	}
 	if err != nil {
@@ -103,7 +83,7 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	common.GinJSON(c, http.StatusOK, common.Response{Data: event})
+	common.GinJSON(c, http.StatusOK, common.Response{Data: item})
 }
 
 func (h *Handler) Delete(c *gin.Context) {
@@ -115,7 +95,7 @@ func (h *Handler) Delete(c *gin.Context) {
 
 	err := h.service.Delete(c.Request.Context(), user.TenantID, c.Param("id"))
 	if err == sql.ErrNoRows {
-		common.GinError(c, http.StatusNotFound, "event not found")
+		common.GinError(c, http.StatusNotFound, "budget item not found")
 		return
 	}
 	if err != nil {

@@ -38,6 +38,16 @@ curl http://localhost:8080/health
 - `GET /events`
 - `POST /events`
 - `GET /events/{id}`
+- `PUT /events/{id}`
+- `DELETE /events/{id}`
+- `GET /events/{id}/budget`
+- `POST /events/{id}/budget`
+- `PUT /budget/{id}`
+- `DELETE /budget/{id}`
+- `GET /events/{id}/gifts`
+- `POST /events/{id}/gifts`
+- `PUT /gifts/{id}`
+- `DELETE /gifts/{id}`
 - `GET /guests?event_id={id}`
 - `POST /guests`
 - `POST /rsvp`

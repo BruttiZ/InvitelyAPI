@@ -1,12 +1,20 @@
 services:
   api:
-    build: .
+    build:
+      context: .
+      target: dev
     ports:
       - "8080:8080"
     env_file:
       - .env
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/invitely?sslmode=disable
+      DEV_WATCH_INTERVAL: 1
+    volumes:
+      - .:/app
+      - go_pkg_mod:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+    command: sh ./scripts/dev-watch.sh
     depends_on:
       postgres:
         condition: service_healthy
@@ -29,3 +37,5 @@ services:
 
 volumes:
   postgres_data:
+  go_pkg_mod:
+  go_build_cache:

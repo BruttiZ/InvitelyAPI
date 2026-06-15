@@ -58,3 +58,40 @@ func (s *Service) List(ctx context.Context, tenantID string) ([]Event, error) {
 func (s *Service) FindByID(ctx context.Context, id string) (Event, error) {
 	return s.repository.FindByID(ctx, id)
 }
+
+func (s *Service) Update(ctx context.Context, tenantID string, id string, request UpdateEventRequest) (Event, error) {
+	if tenantID == "" {
+		return Event{}, errors.New("tenant not found")
+	}
+	if strings.TrimSpace(id) == "" {
+		return Event{}, errors.New("event id is required")
+	}
+	if strings.TrimSpace(request.Title) == "" {
+		return Event{}, errors.New("title is required")
+	}
+	if request.StartsAt.IsZero() {
+		return Event{}, errors.New("starts_at is required")
+	}
+
+	event := Event{
+		ID:          strings.TrimSpace(id),
+		TenantID:    tenantID,
+		Title:       strings.TrimSpace(request.Title),
+		Description: strings.TrimSpace(request.Description),
+		StartsAt:    request.StartsAt,
+		EndsAt:      request.EndsAt,
+		Location:    strings.TrimSpace(request.Location),
+	}
+
+	return s.repository.Update(ctx, event)
+}
+
+func (s *Service) Delete(ctx context.Context, tenantID string, id string) error {
+	if tenantID == "" {
+		return errors.New("tenant not found")
+	}
+	if strings.TrimSpace(id) == "" {
+		return errors.New("event id is required")
+	}
+	return s.repository.Delete(ctx, strings.TrimSpace(id), tenantID)
+}

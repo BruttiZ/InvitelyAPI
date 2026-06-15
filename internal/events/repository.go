@@ -8,8 +8,10 @@ import (
 
 type Repository interface {
 	Create(ctx context.Context, event Event) (Event, error)
+	Delete(ctx context.Context, id string, tenantID string) error
 	FindByID(ctx context.Context, id string) (Event, error)
 	List(ctx context.Context, tenantID string) ([]Event, error)
+	Update(ctx context.Context, event Event) (Event, error)
 }
 
 type PostgresRepository struct {
@@ -77,6 +79,53 @@ func (r *PostgresRepository) FindByID(ctx context.Context, id string) (Event, er
 		where id = $1`
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.CreatedAt, &event.UpdatedAt)
 	return event, err
+}
+
+func (r *PostgresRepository) Update(ctx context.Context, event Event) (Event, error) {
+	query := `
+		update events
+		set title = $3,
+			name = $3,
+			description = $4,
+			starts_at = $5,
+			ends_at = $6,
+			location = $7,
+			venue_name = $7,
+			address = $7,
+			updated_at = now()
+		where id = $1 and tenant_id = $2
+		returning id, tenant_id, coalesce(title, name), description, starts_at, coalesce(ends_at, starts_at), coalesce(location, venue_name, ''), slug, created_at, updated_at`
+	var endsAt any
+	if !event.EndsAt.IsZero() {
+		endsAt = event.EndsAt
+	}
+	err := r.db.QueryRowContext(ctx, query,
+		event.ID,
+		event.TenantID,
+		event.Title,
+		event.Description,
+		event.StartsAt,
+		endsAt,
+		event.Location,
+	).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.CreatedAt, &event.UpdatedAt)
+	return event, err
+}
+
+func (r *PostgresRepository) Delete(ctx context.Context, id string, tenantID string) error {
+	result, err := r.db.ExecContext(ctx, `delete from events where id = $1 and tenant_id = $2`, id, tenantID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }
 
 func (r *PostgresRepository) List(ctx context.Context, tenantID string) ([]Event, error) {
