@@ -11,6 +11,10 @@ type Config struct {
 	CORSAllowedOrigins string
 	BrevoAPIKey        string
 	BrevoFromName      string
+	BrevoSMTPHost      string
+	BrevoSMTPPort      string
+	BrevoSMTPUsername  string
+	BrevoSMTPKey       string
 }
 
 func Load() Config {
@@ -25,5 +29,9 @@ func Load() Config {
 		CORSAllowedOrigins: GetEnv("CORS_ALLOWED_ORIGINS", "*"),
 		BrevoAPIKey:        GetEnv("BREVO_API_KEY", ""),
 		BrevoFromName:      GetEnv("BREVO_FROM_NAME", "Invitely"),
+		BrevoSMTPHost:      GetEnv("BREVO_SMTP_HOST", "smtp-relay.brevo.com"),
+		BrevoSMTPPort:      GetEnv("BREVO_SMTP_PORT", "587"),
+		BrevoSMTPUsername:  GetEnv("BREVO_SMTP_USERNAME", ""),
+		BrevoSMTPKey:       GetEnv("BREVO_SMTP_KEY", ""),
 	}
 }

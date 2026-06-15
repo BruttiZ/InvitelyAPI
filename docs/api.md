@@ -3,6 +3,7 @@
 Documentacao completa:
 
 - `docs/API_COMPLETA.md`
+- `docs/LEMBRETES_EMAIL.md`
 
 The API exposes OpenAPI documentation through the running Gin server.
 

@@ -28,6 +28,7 @@ http://localhost:8080/swagger
 - OpenAPI `3.0.3` para documentacao Swagger
 - `pgx` como driver PostgreSQL
 - `gopkg.in/yaml.v3` para gerar o JSON do Swagger a partir do YAML embutido
+- Brevo para envio de e-mails transacionais de lembrete
 
 ## Estrutura do Projeto
 
@@ -62,7 +63,20 @@ SUPABASE_URL=https://seu-projeto.supabase.co
 SUPABASE_ANON_KEY=sua_anon_key
 SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
 CORS_ALLOWED_ORIGINS=http://localhost:5173
+BREVO_FROM_NAME=Invitely
+BREVO_API_KEY=
+BREVO_SMTP_HOST=smtp-relay.brevo.com
+BREVO_SMTP_PORT=587
+BREVO_SMTP_USERNAME=
+BREVO_SMTP_KEY=
 ```
+
+Para Brevo existem dois modos suportados:
+
+- API HTTP: use `BREVO_API_KEY`, normalmente com prefixo `xkeysib-`.
+- SMTP: use `BREVO_SMTP_USERNAME` e `BREVO_SMTP_KEY`, normalmente com chave `xsmtpsib-`.
+
+Se a chave comecar com `xsmtpsib-`, ela e uma chave SMTP. Nesse caso tambem e obrigatorio informar o SMTP login do Brevo em `BREVO_SMTP_USERNAME`.
 
 No Docker Compose, a API usa o banco interno:
 
@@ -436,9 +450,15 @@ Resposta:
 
 ## Lembretes
 
-Lembretes permitem que o organizador dispare uma campanha de e-mail para convidados de um evento. A API valida os dados, garante que o evento pertence ao tenant autenticado e registra a campanha com status `queued`.
+Lembretes permitem que o organizador dispare uma campanha de e-mail para convidados de um evento. A API valida os dados, garante que o evento pertence ao tenant autenticado, registra a campanha e envia pelo Brevo.
 
-Atualmente a API persiste a campanha e deixa os e-mails enfileirados logicamente. O envio real pode ser conectado depois a um provedor de e-mail ou fila.
+Quando o Brevo aceita o envio, a campanha fica com status `sent`. Se o provedor falhar, a campanha fica com status `failed`.
+
+Guia especifico desta integracao:
+
+```text
+docs/LEMBRETES_EMAIL.md
+```
 
 ### `POST /events/{id}/reminders`
 
@@ -479,7 +499,7 @@ Resposta `202`:
     "campaign_id": "uuid",
     "event_id": "uuid",
     "queued": 2,
-    "status": "queued"
+    "status": "sent"
   }
 }
 ```
@@ -505,6 +525,8 @@ Possiveis erros:
 - `403`: evento pertence a outra organizacao.
 - `404`: evento nao encontrado.
 - `422`: campos invalidos.
+- `502`: Brevo respondeu com erro.
+- `503`: Brevo indisponivel ou credenciais ausentes.
 
 ## Convidados
 

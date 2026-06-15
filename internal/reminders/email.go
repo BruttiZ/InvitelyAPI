@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"mime"
 	"net/http"
+	stdmail "net/mail"
+	"net/smtp"
 	"strings"
 	"time"
 )
@@ -40,6 +43,28 @@ type BrevoSender struct {
 	apiKey     string
 	fromName   string
 	httpClient *http.Client
+}
+
+type SenderConfig struct {
+	APIKey       string
+	FromName     string
+	SMTPHost     string
+	SMTPPort     string
+	SMTPUsername string
+	SMTPKey      string
+}
+
+func NewSender(config SenderConfig) EmailSender {
+	if strings.TrimSpace(config.SMTPKey) != "" || strings.HasPrefix(strings.TrimSpace(config.APIKey), "xsmtpsib-") {
+		smtpKey := strings.TrimSpace(config.SMTPKey)
+		if smtpKey == "" {
+			smtpKey = strings.TrimSpace(config.APIKey)
+		}
+
+		return NewBrevoSMTPSender(config.SMTPHost, config.SMTPPort, config.SMTPUsername, smtpKey, config.FromName)
+	}
+
+	return NewBrevoSender(config.APIKey, config.FromName)
 }
 
 func NewBrevoSender(apiKey string, fromName string) *BrevoSender {
@@ -105,6 +130,71 @@ func (s *BrevoSender) SendReminder(ctx context.Context, message EmailMessage) (s
 	return result.MessageID, nil
 }
 
+type BrevoSMTPSender struct {
+	host     string
+	port     string
+	username string
+	key      string
+	fromName string
+}
+
+func NewBrevoSMTPSender(host string, port string, username string, key string, fromName string) *BrevoSMTPSender {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		host = "smtp-relay.brevo.com"
+	}
+	port = strings.TrimSpace(port)
+	if port == "" {
+		port = "587"
+	}
+	fromName = strings.TrimSpace(fromName)
+	if fromName == "" {
+		fromName = "Invitely"
+	}
+
+	return &BrevoSMTPSender{
+		host:     host,
+		port:     port,
+		username: strings.TrimSpace(username),
+		key:      strings.TrimSpace(key),
+		fromName: fromName,
+	}
+}
+
+func (s *BrevoSMTPSender) SendReminder(ctx context.Context, message EmailMessage) (string, error) {
+	if s.username == "" || s.key == "" {
+		return "", ErrEmailProviderUnavailable
+	}
+
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	default:
+	}
+
+	fromName := valueOrFallback(message.FromName, s.fromName)
+	fromHeader := formatAddress(fromName, message.FromEmail)
+	toHeader := strings.Join(message.Recipients, ", ")
+	raw := strings.Join([]string{
+		"From: " + fromHeader,
+		"To: " + toHeader,
+		"Subject: " + encodeHeader(message.Subject),
+		"MIME-Version: 1.0",
+		"Content-Type: text/html; charset=UTF-8",
+		"Content-Transfer-Encoding: 8bit",
+		"",
+		htmlEmail(message.Message),
+	}, "\r\n")
+
+	addr := s.host + ":" + s.port
+	auth := smtp.PlainAuth("", s.username, s.key, s.host)
+	if err := smtp.SendMail(addr, auth, message.FromEmail, message.Recipients, []byte(raw)); err != nil {
+		return "", ProviderError{StatusCode: 0, Body: err.Error()}
+	}
+
+	return "", nil
+}
+
 type brevoEmailRequest struct {
 	Sender      brevoEmailContact   `json:"sender"`
 	To          []brevoEmailContact `json:"to"`
@@ -143,4 +233,17 @@ func valueOrFallback(value string, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func formatAddress(name string, email string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "<" + email + ">"
+	}
+	return (&stdmail.Address{Name: name, Address: email}).String()
+}
+
+func encodeHeader(value string) string {
+	value = strings.ReplaceAll(strings.ReplaceAll(value, "\r", ""), "\n", "")
+	return mime.QEncoding.Encode("UTF-8", value)
 }

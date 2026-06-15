@@ -35,7 +35,14 @@ func Register(router *gin.Engine, cfg config.Config, db *sql.DB) {
 	remindersHandler := reminders.NewHandler(reminders.NewService(
 		reminders.NewPostgresRepository(db),
 		events.NewPostgresRepository(db),
-		reminders.NewBrevoSender(cfg.BrevoAPIKey, cfg.BrevoFromName),
+		reminders.NewSender(reminders.SenderConfig{
+			APIKey:       cfg.BrevoAPIKey,
+			FromName:     cfg.BrevoFromName,
+			SMTPHost:     cfg.BrevoSMTPHost,
+			SMTPPort:     cfg.BrevoSMTPPort,
+			SMTPUsername: cfg.BrevoSMTPUsername,
+			SMTPKey:      cfg.BrevoSMTPKey,
+		}),
 	))
 	rsvpHandler := rsvp.NewHandler(rsvp.NewService(rsvp.NewPostgresRepository(db)))
 	dashboardHandler := dashboard.NewHandler(dashboard.NewService(db))
