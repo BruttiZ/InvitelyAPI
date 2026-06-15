@@ -1,9 +1,6 @@
 package common
 
-import (
-	"encoding/json"
-	"net/http"
-)
+import "github.com/gin-gonic/gin"
 
 type Response struct {
 	Data    any    `json:"data,omitempty"`
@@ -11,17 +8,10 @@ type Response struct {
 	Message string `json:"message,omitempty"`
 }
 
-func JSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
+func GinJSON(c *gin.Context, status int, payload any) {
+	c.JSON(status, payload)
 }
 
-func Error(w http.ResponseWriter, status int, message string) {
-	JSON(w, status, Response{Error: message})
-}
-
-func Decode(r *http.Request, target any) error {
-	defer r.Body.Close()
-	return json.NewDecoder(r.Body).Decode(target)
+func GinError(c *gin.Context, status int, message string) {
+	GinJSON(c, status, Response{Error: message})
 }

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"invitely-api/internal/config"
 	"invitely-api/internal/database"
 	"invitely-api/routes"
@@ -23,12 +25,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mux := http.NewServeMux()
-	routes.Register(mux, cfg, db)
+	router := gin.New()
+	routes.Register(router, cfg, db)
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           routes.Chain(mux),
+		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

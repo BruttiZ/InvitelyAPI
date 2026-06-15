@@ -2,7 +2,8 @@ package dashboard
 
 import (
 	"net/http"
-	"strings"
+
+	"github.com/gin-gonic/gin"
 
 	"invitely-api/internal/common"
 	"invitely-api/internal/middleware"
@@ -16,28 +17,18 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/dashboard")
-	if (path == "" || path == "/") && r.Method == http.MethodGet {
-		h.Overview(w, r)
-		return
-	}
-
-	common.Error(w, http.StatusMethodNotAllowed, "method not allowed")
-}
-
-func (h *Handler) Overview(w http.ResponseWriter, r *http.Request) {
-	user, ok := middleware.UserFromContext(r.Context())
+func (h *Handler) Overview(c *gin.Context) {
+	user, ok := middleware.GinUser(c)
 	if !ok {
-		common.Error(w, http.StatusUnauthorized, "unauthenticated")
+		common.GinError(c, http.StatusUnauthorized, "unauthenticated")
 		return
 	}
 
-	overview, err := h.service.Overview(r.Context(), user.TenantID)
+	overview, err := h.service.Overview(c.Request.Context(), user.TenantID)
 	if err != nil {
-		common.Error(w, http.StatusInternalServerError, err.Error())
+		common.GinError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	common.JSON(w, http.StatusOK, common.Response{Data: overview})
+	common.GinJSON(c, http.StatusOK, common.Response{Data: overview})
 }

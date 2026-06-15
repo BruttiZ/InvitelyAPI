@@ -2,6 +2,9 @@ package auth
 
 import (
 	"net/http"
+	"strings"
+
+	"github.com/gin-gonic/gin"
 
 	"invitely-api/internal/common"
 )
@@ -14,69 +17,58 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		common.Error(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-
+func (h *Handler) Login(c *gin.Context) {
 	var request LoginRequest
-	if err := common.Decode(r, &request); err != nil {
-		common.Error(w, http.StatusBadRequest, "invalid request body")
+	if err := c.ShouldBindJSON(&request); err != nil {
+		common.GinError(c, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	response, err := h.service.Login(r.Context(), request)
+	response, err := h.service.Login(c.Request.Context(), request)
 	if err != nil {
-		common.Error(w, http.StatusUnauthorized, err.Error())
+		common.GinError(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	common.JSON(w, http.StatusOK, common.Response{Data: response})
+	common.GinJSON(c, http.StatusOK, common.Response{Data: response})
 }
 
-func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		common.Error(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-
+func (h *Handler) Register(c *gin.Context) {
 	var request RegisterRequest
-	if err := common.Decode(r, &request); err != nil {
-		common.Error(w, http.StatusBadRequest, "invalid request body")
+	if err := c.ShouldBindJSON(&request); err != nil {
+		common.GinError(c, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	response, err := h.service.Register(r.Context(), request)
+	response, err := h.service.Register(c.Request.Context(), request)
 	if err != nil {
-		common.Error(w, http.StatusBadRequest, err.Error())
+		common.GinError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	common.JSON(w, http.StatusCreated, common.Response{Data: response})
+	common.GinJSON(c, http.StatusCreated, common.Response{Data: response})
 }
 
-func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-	token := bearerToken(r)
+func (h *Handler) Me(c *gin.Context) {
+	token := bearerToken(c)
 	if token == "" {
-		common.Error(w, http.StatusUnauthorized, "missing bearer token")
+		common.GinError(c, http.StatusUnauthorized, "missing bearer token")
 		return
 	}
 
-	user, err := h.service.EnsureUserFromToken(r.Context(), token)
+	user, err := h.service.EnsureUserFromToken(c.Request.Context(), token)
 	if err != nil {
-		common.Error(w, http.StatusUnauthorized, err.Error())
+		common.GinError(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	common.JSON(w, http.StatusOK, common.Response{Data: user})
+	common.GinJSON(c, http.StatusOK, common.Response{Data: user})
 }
 
-func bearerToken(r *http.Request) string {
-	const prefix = "Bearer "
-	header := r.Header.Get("Authorization")
-	if len(header) <= len(prefix) || header[:len(prefix)] != prefix {
+func bearerToken(c *gin.Context) string {
+	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+	if token == c.GetHeader("Authorization") {
 		return ""
 	}
-	return header[len(prefix):]
+	return token
 }

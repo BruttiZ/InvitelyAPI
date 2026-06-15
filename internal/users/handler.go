@@ -1,6 +1,10 @@
 package users
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 type Handler struct {
 	service *Service
@@ -10,6 +14,6 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+func (h *Handler) List(c *gin.Context) {
+	c.Status(http.StatusNotImplemented)
 }

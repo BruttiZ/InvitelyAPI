@@ -2,7 +2,8 @@ package guests
 
 import (
 	"net/http"
-	"strings"
+
+	"github.com/gin-gonic/gin"
 
 	"invitely-api/internal/common"
 	"invitely-api/internal/middleware"
@@ -16,57 +17,41 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/guests")
-	if path == "" || path == "/" {
-		if r.Method == http.MethodGet {
-			h.List(w, r)
-			return
-		}
-		if r.Method == http.MethodPost {
-			h.Create(w, r)
-			return
-		}
-	}
-
-	common.Error(w, http.StatusMethodNotAllowed, "method not allowed")
-}
-
-func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	user, ok := middleware.UserFromContext(r.Context())
+func (h *Handler) List(c *gin.Context) {
+	user, ok := middleware.GinUser(c)
 	if !ok {
-		common.Error(w, http.StatusUnauthorized, "unauthenticated")
+		common.GinError(c, http.StatusUnauthorized, "unauthenticated")
 		return
 	}
 
-	eventID := r.URL.Query().Get("event_id")
-	guests, err := h.service.ListByEvent(r.Context(), user.TenantID, eventID)
+	eventID := c.Query("event_id")
+	guests, err := h.service.ListByEvent(c.Request.Context(), user.TenantID, eventID)
 	if err != nil {
-		common.Error(w, http.StatusInternalServerError, err.Error())
+		common.GinError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	common.JSON(w, http.StatusOK, common.Response{Data: guests})
+	common.GinJSON(c, http.StatusOK, common.Response{Data: guests})
 }
 
-func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	user, ok := middleware.UserFromContext(r.Context())
+func (h *Handler) Create(c *gin.Context) {
+	user, ok := middleware.GinUser(c)
 	if !ok {
-		common.Error(w, http.StatusUnauthorized, "unauthenticated")
+		common.GinError(c, http.StatusUnauthorized, "unauthenticated")
 		return
 	}
 
 	var request CreateGuestRequest
-	if err := common.Decode(r, &request); err != nil {
-		common.Error(w, http.StatusBadRequest, "invalid request body")
+	if err := c.ShouldBindJSON(&request); err != nil {
+		common.GinError(c, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	guest, err := h.service.Create(r.Context(), user.TenantID, request)
+	guest, err := h.service.Create(c.Request.Context(), user.TenantID, request)
 	if err != nil {
-		common.Error(w, http.StatusBadRequest, err.Error())
+		common.GinError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	common.JSON(w, http.StatusCreated, common.Response{Data: guest})
+	common.GinJSON(c, http.StatusCreated, common.Response{Data: guest})
 }
