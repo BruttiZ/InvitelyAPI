@@ -33,6 +33,8 @@ O projeto suporta dois modos:
 
 Como a chave atual comeca com `xsmtpsib-`, use o modo SMTP.
 
+Para producao, prefira API HTTP com `BREVO_API_KEY` quando possivel. Ela usa HTTPS/porta 443 e evita problemas comuns de SMTP em provedores de deploy. Se `BREVO_API_KEY` com prefixo `xkeysib-` estiver configurada, a API Go usa HTTP mesmo que as variaveis SMTP tambem existam.
+
 Variaveis no `.env`:
 
 ```env
@@ -327,6 +329,14 @@ Se a API Go responder erro do Brevo, ela retorna:
 ```
 
 `provider_status: 0` significa erro de conexao SMTP, autenticacao SMTP ou indisponibilidade antes de existir um status HTTP.
+
+Se nada aparece em `Transacional > Logs` no Brevo, normalmente a mensagem nao chegou ao Brevo. Verifique os logs da API Go no Render. Se aparecer erro de SMTP, gere uma chave de API HTTP no Brevo e configure:
+
+```env
+BREVO_API_KEY=xkeysib-sua-chave-api
+```
+
+Depois faca redeploy da API Go.
 
 ## Checklist Para Funcionar
 

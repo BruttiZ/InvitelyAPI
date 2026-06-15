@@ -66,6 +66,10 @@ type SenderConfig struct {
 }
 
 func NewSender(config SenderConfig) EmailSender {
+	if strings.HasPrefix(strings.TrimSpace(config.APIKey), "xkeysib-") {
+		return NewBrevoSender(config.APIKey, config.FromName)
+	}
+
 	if strings.TrimSpace(config.SMTPKey) != "" || strings.HasPrefix(strings.TrimSpace(config.APIKey), "xsmtpsib-") {
 		smtpKey := strings.TrimSpace(config.SMTPKey)
 		if smtpKey == "" {
