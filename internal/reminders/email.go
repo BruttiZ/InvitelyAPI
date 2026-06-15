@@ -27,6 +27,14 @@ func (e ProviderError) Error() string {
 	return fmt.Sprintf("email provider returned status %d", e.StatusCode)
 }
 
+func (e ProviderError) SafeBody() string {
+	body := strings.TrimSpace(e.Body)
+	if len(body) > 500 {
+		return body[:500]
+	}
+	return body
+}
+
 type EmailMessage struct {
 	FromEmail  string
 	FromName   string

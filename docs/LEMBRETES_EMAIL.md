@@ -285,11 +285,55 @@ POST /api/v1/go/events/{id}/reminders
 
 Payload igual ao da API Go.
 
+## Deploy Render/Laravel
+
+Se o frontend chamar:
+
+```http
+POST /api/v1/go/events/{id}/reminders
+```
+
+e receber `go_api_unavailable`, o erro provavelmente esta no proxy Laravel, antes mesmo do envio pelo Brevo. Confira:
+
+- a API Go esta online no Render;
+- a URL base da API Go no Laravel esta correta;
+- a rota `events/*/reminders` esta liberada no proxy;
+- o Laravel esta encaminhando o header `Authorization`;
+- o servico Go no Render possui as variaveis Brevo.
+
+Variaveis que precisam existir no servico Go do Render:
+
+```env
+BREVO_FROM_NAME=Invitely
+BREVO_SMTP_HOST=smtp-relay.brevo.com
+BREVO_SMTP_PORT=587
+BREVO_SMTP_USERNAME=aed787001@smtp-brevo.com
+BREVO_SMTP_KEY=sua-smtp-key-do-brevo
+```
+
+No arquivo `render.yaml`, as chaves sensiveis ficam como `sync: false`, entao precisam ser preenchidas manualmente no painel do Render.
+
+Se a API Go responder erro do Brevo, ela retorna:
+
+```json
+{
+  "error": "email provider failed",
+  "data": {
+    "provider_status": 0,
+    "provider_error": "detalhe seguro do erro"
+  }
+}
+```
+
+`provider_status: 0` significa erro de conexao SMTP, autenticacao SMTP ou indisponibilidade antes de existir um status HTTP.
+
 ## Checklist Para Funcionar
 
 - Remetente verificado no Brevo.
 - `BREVO_SMTP_USERNAME` preenchido com o SMTP login do Brevo.
 - `BREVO_SMTP_KEY` preenchido com uma SMTP key valida.
+- Variaveis Brevo preenchidas no ambiente de deploy da API Go, nao apenas no `.env` local.
+- Laravel apontando para a URL publica correta da API Go.
 - API reiniciada ou watcher ativo.
 - Token Bearer valido no request.
 - Evento pertence ao usuario autenticado.

@@ -54,7 +54,17 @@ func (h *Handler) Send(c *gin.Context) {
 	}
 	var providerError ProviderError
 	if errors.As(err, &providerError) {
-		common.GinError(c, http.StatusBadGateway, "email provider failed")
+		status := http.StatusBadGateway
+		if providerError.StatusCode == 0 {
+			status = http.StatusServiceUnavailable
+		}
+		common.GinJSON(c, status, common.Response{
+			Error: "email provider failed",
+			Data: map[string]any{
+				"provider_status": providerError.StatusCode,
+				"provider_error":  providerError.SafeBody(),
+			},
+		})
 		return
 	}
 	if err != nil {
