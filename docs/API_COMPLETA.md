@@ -450,9 +450,9 @@ Resposta:
 
 ## Lembretes
 
-Lembretes permitem que o organizador dispare uma campanha de e-mail para convidados de um evento. A API valida os dados, garante que o evento pertence ao tenant autenticado, registra a campanha e envia pelo Brevo.
+Lembretes permitem que o organizador dispare uma campanha de e-mail para convidados de um evento. A API valida os dados, garante que o evento pertence ao tenant autenticado, registra a campanha e envia pelo Brevo em background.
 
-Quando o Brevo aceita o envio, a campanha fica com status `sent`. Se o provedor falhar, a campanha fica com status `failed`.
+A rota retorna rapidamente com status `queued`. Quando o Brevo aceita o envio, a campanha fica com status `sent`. Se o provedor falhar, a campanha fica com status `failed`.
 
 Guia especifico desta integracao:
 
@@ -499,7 +499,7 @@ Resposta `202`:
     "campaign_id": "uuid",
     "event_id": "uuid",
     "queued": 2,
-    "status": "sent"
+    "status": "queued"
   }
 }
 ```

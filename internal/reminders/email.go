@@ -3,12 +3,14 @@ package reminders
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
 	"io"
 	"mime"
+	"net"
 	"net/http"
 	stdmail "net/mail"
 	"net/smtp"
@@ -44,6 +46,7 @@ type EmailMessage struct {
 }
 
 type EmailSender interface {
+	Configured() bool
 	SendReminder(ctx context.Context, message EmailMessage) (string, error)
 }
 
@@ -138,6 +141,10 @@ func (s *BrevoSender) SendReminder(ctx context.Context, message EmailMessage) (s
 	return result.MessageID, nil
 }
 
+func (s *BrevoSender) Configured() bool {
+	return s.apiKey != ""
+}
+
 type BrevoSMTPSender struct {
 	host     string
 	port     string
@@ -194,13 +201,65 @@ func (s *BrevoSMTPSender) SendReminder(ctx context.Context, message EmailMessage
 		htmlEmail(message.Message),
 	}, "\r\n")
 
-	addr := s.host + ":" + s.port
-	auth := smtp.PlainAuth("", s.username, s.key, s.host)
-	if err := smtp.SendMail(addr, auth, message.FromEmail, message.Recipients, []byte(raw)); err != nil {
+	if err := s.send(ctx, message.FromEmail, message.Recipients, []byte(raw)); err != nil {
 		return "", ProviderError{StatusCode: 0, Body: err.Error()}
 	}
 
 	return "", nil
+}
+
+func (s *BrevoSMTPSender) Configured() bool {
+	return s.username != "" && s.key != ""
+}
+
+func (s *BrevoSMTPSender) send(ctx context.Context, from string, recipients []string, body []byte) error {
+	dialer := net.Dialer{Timeout: 10 * time.Second}
+	conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(s.host, s.port))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(20 * time.Second))
+
+	client, err := smtp.NewClient(conn, s.host)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	if err := client.Hello("localhost"); err != nil {
+		return err
+	}
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		if err := client.StartTLS(&tls.Config{ServerName: s.host, MinVersion: tls.VersionTLS12}); err != nil {
+			return err
+		}
+	}
+	if err := client.Auth(smtp.PlainAuth("", s.username, s.key, s.host)); err != nil {
+		return err
+	}
+	if err := client.Mail(from); err != nil {
+		return err
+	}
+	for _, recipient := range recipients {
+		if err := client.Rcpt(recipient); err != nil {
+			return err
+		}
+	}
+
+	writer, err := client.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := writer.Write(body); err != nil {
+		_ = writer.Close()
+		return err
+	}
+	if err := writer.Close(); err != nil {
+		return err
+	}
+
+	return client.Quit()
 }
 
 type brevoEmailRequest struct {

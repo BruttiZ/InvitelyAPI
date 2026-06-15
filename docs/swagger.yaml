@@ -201,7 +201,7 @@ paths:
     post:
       tags: [Lembretes]
       summary: Enviar lembretes de RSVP
-      description: Valida os dados do lembrete, garante que o evento pertence ao tenant autenticado, registra uma campanha e envia o e-mail pelo Brevo.
+      description: Valida os dados do lembrete, garante que o evento pertence ao tenant autenticado, registra uma campanha e envia o e-mail pelo Brevo em background.
       security:
         - bearerAuth: []
       parameters:
@@ -840,7 +840,7 @@ components:
           example: 2
         status:
           type: string
-          example: sent
+          example: queued
     RespostaLembrete:
       type: object
       properties:

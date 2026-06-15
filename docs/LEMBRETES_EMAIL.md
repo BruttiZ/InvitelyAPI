@@ -19,7 +19,8 @@ Ela faz:
 - garante que o evento pertence a organizacao autenticada;
 - valida remetente, destinatarios, assunto e mensagem;
 - registra uma campanha na tabela `event_reminder_campaigns`;
-- envia o e-mail pelo Brevo;
+- retorna `202 Accepted` rapidamente;
+- envia o e-mail pelo Brevo em background;
 - marca a campanha como `sent` quando o envio e aceito;
 - marca a campanha como `failed` quando o Brevo retorna erro.
 
@@ -112,7 +113,7 @@ Campos:
 
 ## Response de Sucesso
 
-Quando o Brevo aceita o envio:
+Quando a campanha e aceita para processamento:
 
 ```http
 202 Accepted
@@ -124,12 +125,12 @@ Quando o Brevo aceita o envio:
     "campaign_id": "uuid",
     "event_id": "uuid",
     "queued": 2,
-    "status": "sent"
+    "status": "queued"
   }
 }
 ```
 
-Observacao: o campo `queued` representa a quantidade de destinatarios aceitos para envio naquela requisicao.
+Observacao: o campo `queued` representa a quantidade de destinatarios aceitos para envio naquela requisicao. O envio real acontece em background e a campanha e atualizada para `sent` ou `failed`.
 
 ## Erros
 
