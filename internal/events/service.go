@@ -43,6 +43,10 @@ func (s *Service) Create(ctx context.Context, tenantID string, request CreateEve
 		EndsAt:      request.EndsAt,
 		Location:    strings.TrimSpace(request.Location),
 		Slug:        eventSlug,
+		Status:      "published",
+		TemplateID:  strings.TrimSpace(request.TemplateID),
+		Theme:       request.Theme,
+		Image:       strings.TrimSpace(request.Image),
 	}
 
 	return s.repository.Create(ctx, event)
@@ -57,6 +61,10 @@ func (s *Service) List(ctx context.Context, tenantID string) ([]Event, error) {
 
 func (s *Service) FindByID(ctx context.Context, id string) (Event, error) {
 	return s.repository.FindByID(ctx, id)
+}
+
+func (s *Service) FindPublicBySlug(ctx context.Context, slug string) (Event, error) {
+	return s.repository.FindPublicBySlug(ctx, strings.TrimSpace(slug))
 }
 
 func (s *Service) Update(ctx context.Context, tenantID string, id string, request UpdateEventRequest) (Event, error) {
@@ -81,6 +89,9 @@ func (s *Service) Update(ctx context.Context, tenantID string, id string, reques
 		StartsAt:    request.StartsAt,
 		EndsAt:      request.EndsAt,
 		Location:    strings.TrimSpace(request.Location),
+		TemplateID:  strings.TrimSpace(request.TemplateID),
+		Theme:       request.Theme,
+		Image:       strings.TrimSpace(request.Image),
 	}
 
 	return s.repository.Update(ctx, event)
