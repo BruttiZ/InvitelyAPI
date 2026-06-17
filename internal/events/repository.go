@@ -10,6 +10,7 @@ type Repository interface {
 	Create(ctx context.Context, event Event) (Event, error)
 	Delete(ctx context.Context, id string, tenantID string) error
 	FindByID(ctx context.Context, id string) (Event, error)
+	FindPublicBySlug(ctx context.Context, slug string) (Event, error)
 	List(ctx context.Context, tenantID string) ([]Event, error)
 	Update(ctx context.Context, event Event) (Event, error)
 }
@@ -26,20 +27,20 @@ func (r *PostgresRepository) Create(ctx context.Context, event Event) (Event, er
 	query := `
 		insert into events (
 			id, tenant_id, title, name, description, starts_at, ends_at, location, venue_name, address,
-			slug, status, timezone, hero, content, theme, gallery, seo
+			slug, status, timezone, hero, content, theme, gallery, seo, template_id, image
 		)
 		values (
 			$1, $2, $3, $3, $4, $5, $6, $7, $7, $7,
-			$8, 'published', 'America/Sao_Paulo', $9::json, $10::json, $11::json, $12::json, $13::json
+			$8, 'published', 'America/Sao_Paulo', $9::json, $10::json, $11::json, $12::json, $13::json, $14, $15
 		)
-		returning id, tenant_id, coalesce(title, name), description, starts_at, coalesce(ends_at, starts_at), coalesce(location, venue_name, ''), slug, created_at, updated_at`
+		returning id, tenant_id, coalesce(title, name), description, starts_at, coalesce(ends_at, starts_at), coalesce(location, venue_name, ''), slug, coalesce(status, ''), coalesce(template_id, ''), coalesce(theme::text, '{}'), coalesce(image, ''), created_at, updated_at`
 	var endsAt any
 	if !event.EndsAt.IsZero() {
 		endsAt = event.EndsAt
 	}
 	hero := mustJSON(map[string]string{"title": event.Title})
 	content := mustJSON(map[string]string{"description": event.Description})
-	theme := mustJSON(map[string]string{"primary": "#8B5CF6", "accent": "#0EA5E9"})
+	theme := mustJSON(coalesceAny(event.Theme, map[string]string{"primary": "#8B5CF6", "accent": "#0EA5E9"}))
 	emptyArray := mustJSON([]string{})
 	seo := mustJSON(map[string]string{"title": event.Title})
 
@@ -57,9 +58,18 @@ func (r *PostgresRepository) Create(ctx context.Context, event Event) (Event, er
 		theme,
 		emptyArray,
 		seo,
-	).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.CreatedAt, &event.UpdatedAt)
+		event.TemplateID,
+		event.Image,
+	).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.Status, &event.TemplateID, scanJSON(&event.Theme), &event.Image, &event.CreatedAt, &event.UpdatedAt)
 
 	return event, err
+}
+
+func coalesceAny(value any, fallback any) any {
+	if value == nil {
+		return fallback
+	}
+	return value
 }
 
 func mustJSON(value any) string {
@@ -71,13 +81,54 @@ func mustJSON(value any) string {
 	return string(data)
 }
 
+type jsonTarget struct {
+	value *any
+}
+
+func scanJSON(value *any) *jsonTarget {
+	return &jsonTarget{value: value}
+}
+
+func (j *jsonTarget) Scan(src any) error {
+	var raw []byte
+	switch value := src.(type) {
+	case string:
+		raw = []byte(value)
+	case []byte:
+		raw = value
+	case nil:
+		*j.value = map[string]any{}
+		return nil
+	default:
+		*j.value = map[string]any{}
+		return nil
+	}
+	var decoded any
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		*j.value = map[string]any{}
+		return nil
+	}
+	*j.value = decoded
+	return nil
+}
+
 func (r *PostgresRepository) FindByID(ctx context.Context, id string) (Event, error) {
 	var event Event
 	query := `
-		select id, tenant_id, title, description, starts_at, coalesce(ends_at, starts_at), location, slug, created_at, updated_at
+		select id, tenant_id, coalesce(title, name), description, starts_at, coalesce(ends_at, starts_at), coalesce(location, venue_name, ''), slug, coalesce(status, ''), coalesce(template_id, ''), coalesce(theme::text, '{}'), coalesce(image, ''), created_at, updated_at
 		from events
 		where id = $1`
-	err := r.db.QueryRowContext(ctx, query, id).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.CreatedAt, &event.UpdatedAt)
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.Status, &event.TemplateID, scanJSON(&event.Theme), &event.Image, &event.CreatedAt, &event.UpdatedAt)
+	return event, err
+}
+
+func (r *PostgresRepository) FindPublicBySlug(ctx context.Context, slug string) (Event, error) {
+	var event Event
+	query := `
+		select id, tenant_id, coalesce(title, name), description, starts_at, coalesce(ends_at, starts_at), coalesce(location, venue_name, ''), slug, coalesce(status, ''), coalesce(template_id, ''), coalesce(theme::text, '{}'), coalesce(image, ''), created_at, updated_at
+		from events
+		where slug = $1`
+	err := r.db.QueryRowContext(ctx, query, slug).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.Status, &event.TemplateID, scanJSON(&event.Theme), &event.Image, &event.CreatedAt, &event.UpdatedAt)
 	return event, err
 }
 
@@ -92,9 +143,12 @@ func (r *PostgresRepository) Update(ctx context.Context, event Event) (Event, er
 			location = $7,
 			venue_name = $7,
 			address = $7,
+			template_id = $8,
+			theme = $9::json,
+			image = $10,
 			updated_at = now()
 		where id = $1 and tenant_id = $2
-		returning id, tenant_id, coalesce(title, name), description, starts_at, coalesce(ends_at, starts_at), coalesce(location, venue_name, ''), slug, created_at, updated_at`
+		returning id, tenant_id, coalesce(title, name), description, starts_at, coalesce(ends_at, starts_at), coalesce(location, venue_name, ''), slug, coalesce(status, ''), coalesce(template_id, ''), coalesce(theme::text, '{}'), coalesce(image, ''), created_at, updated_at`
 	var endsAt any
 	if !event.EndsAt.IsZero() {
 		endsAt = event.EndsAt
@@ -107,7 +161,10 @@ func (r *PostgresRepository) Update(ctx context.Context, event Event) (Event, er
 		event.StartsAt,
 		endsAt,
 		event.Location,
-	).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.CreatedAt, &event.UpdatedAt)
+		event.TemplateID,
+		mustJSON(coalesceAny(event.Theme, map[string]string{})),
+		event.Image,
+	).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.Status, &event.TemplateID, scanJSON(&event.Theme), &event.Image, &event.CreatedAt, &event.UpdatedAt)
 	return event, err
 }
 
@@ -130,7 +187,7 @@ func (r *PostgresRepository) Delete(ctx context.Context, id string, tenantID str
 
 func (r *PostgresRepository) List(ctx context.Context, tenantID string) ([]Event, error) {
 	query := `
-		select id, tenant_id, title, description, starts_at, coalesce(ends_at, starts_at), location, slug, created_at, updated_at
+		select id, tenant_id, coalesce(title, name), description, starts_at, coalesce(ends_at, starts_at), coalesce(location, venue_name, ''), slug, coalesce(status, ''), coalesce(template_id, ''), coalesce(theme::text, '{}'), coalesce(image, ''), created_at, updated_at
 		from events
 		where tenant_id = $1
 		order by starts_at desc`
@@ -143,7 +200,7 @@ func (r *PostgresRepository) List(ctx context.Context, tenantID string) ([]Event
 	events := make([]Event, 0)
 	for rows.Next() {
 		var event Event
-		if err := rows.Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.CreatedAt, &event.UpdatedAt); err != nil {
+		if err := rows.Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.Status, &event.TemplateID, scanJSON(&event.Theme), &event.Image, &event.CreatedAt, &event.UpdatedAt); err != nil {
 			return nil, err
 		}
 		events = append(events, event)

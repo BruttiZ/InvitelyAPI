@@ -3,6 +3,7 @@ package events
 import (
 	"database/sql"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -77,6 +78,25 @@ func (h *Handler) Show(c *gin.Context) {
 		return
 	}
 
+	common.GinJSON(c, http.StatusOK, common.Response{Data: event})
+}
+
+func (h *Handler) PublicShow(c *gin.Context) {
+	event, err := h.service.FindPublicBySlug(c.Request.Context(), c.Param("slug"))
+	if err == sql.ErrNoRows {
+		common.GinError(c, http.StatusNotFound, "event not found")
+		return
+	}
+	if err != nil {
+		common.GinError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	status := strings.ToLower(strings.TrimSpace(event.Status))
+	if status != "published" && status != "active" {
+		common.GinError(c, http.StatusNotFound, "event not found")
+		return
+	}
 	common.GinJSON(c, http.StatusOK, common.Response{Data: event})
 }
 

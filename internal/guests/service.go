@@ -38,14 +38,21 @@ func (s *Service) Create(ctx context.Context, tenantID string, request CreateGue
 	if err != nil {
 		return Guest{}, err
 	}
+	inviteToken, err := uuid.New()
+	if err != nil {
+		return Guest{}, err
+	}
 
 	guest := Guest{
-		ID:      id,
-		EventID: strings.TrimSpace(request.EventID),
-		Name:    strings.TrimSpace(request.Name),
-		Email:   strings.ToLower(strings.TrimSpace(request.Email)),
-		Phone:   strings.TrimSpace(request.Phone),
-		Status:  "invited",
+		ID:            id,
+		EventID:       strings.TrimSpace(request.EventID),
+		Name:          strings.TrimSpace(request.Name),
+		Email:         strings.ToLower(strings.TrimSpace(request.Email)),
+		Phone:         strings.TrimSpace(request.Phone),
+		Status:        "invited",
+		PartySize:     1,
+		MaxCompanions: 5,
+		InviteToken:   inviteToken,
 	}
 
 	return s.repository.Create(ctx, guest)

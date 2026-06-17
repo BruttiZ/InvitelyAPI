@@ -11,6 +11,10 @@ type Event struct {
 	EndsAt      time.Time `json:"ends_at"`
 	Location    string    `json:"location"`
 	Slug        string    `json:"slug"`
+	Status      string    `json:"status"`
+	TemplateID  string    `json:"templateId"`
+	Theme       any       `json:"theme,omitempty"`
+	Image       string    `json:"image"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

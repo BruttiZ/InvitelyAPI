@@ -96,6 +96,10 @@ func Register(router *gin.Engine, cfg config.Config, db *sql.DB) {
 	protected.GET("/analytics/events/:eventID", analyticsHandler.Summary)
 
 	router.POST("/rsvp", rsvpHandler.Submit)
+
+	apiV1 := router.Group("/api/v1")
+	apiV1.GET("/events/:slug", eventsHandler.PublicShow)
+	apiV1.POST("/events/:slug/rsvp", rsvpHandler.SubmitPublic)
 }
 
 func swaggerUI(c *gin.Context) {
