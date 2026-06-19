@@ -21,6 +21,9 @@ func (s *Service) Create(ctx context.Context, tenantID string, request CreateEve
 	if tenantID == "" {
 		return Event{}, errors.New("tenant not found")
 	}
+	if !uuid.IsValid(tenantID) {
+		return Event{}, errors.New("invalid tenant id")
+	}
 	if strings.TrimSpace(request.Title) == "" {
 		return Event{}, errors.New("title is required")
 	}
@@ -56,10 +59,16 @@ func (s *Service) List(ctx context.Context, tenantID string) ([]Event, error) {
 	if tenantID == "" {
 		return []Event{}, nil
 	}
+	if !uuid.IsValid(tenantID) {
+		return nil, errors.New("invalid tenant id")
+	}
 	return s.repository.List(ctx, tenantID)
 }
 
 func (s *Service) FindByID(ctx context.Context, id string) (Event, error) {
+	if !uuid.IsValid(strings.TrimSpace(id)) {
+		return Event{}, errors.New("invalid event id")
+	}
 	return s.repository.FindByID(ctx, id)
 }
 
@@ -73,6 +82,12 @@ func (s *Service) Update(ctx context.Context, tenantID string, id string, reques
 	}
 	if strings.TrimSpace(id) == "" {
 		return Event{}, errors.New("event id is required")
+	}
+	if !uuid.IsValid(tenantID) {
+		return Event{}, errors.New("invalid tenant id")
+	}
+	if !uuid.IsValid(strings.TrimSpace(id)) {
+		return Event{}, errors.New("invalid event id")
 	}
 	if strings.TrimSpace(request.Title) == "" {
 		return Event{}, errors.New("title is required")
@@ -103,6 +118,12 @@ func (s *Service) Delete(ctx context.Context, tenantID string, id string) error 
 	}
 	if strings.TrimSpace(id) == "" {
 		return errors.New("event id is required")
+	}
+	if !uuid.IsValid(tenantID) {
+		return errors.New("invalid tenant id")
+	}
+	if !uuid.IsValid(strings.TrimSpace(id)) {
+		return errors.New("invalid event id")
 	}
 	return s.repository.Delete(ctx, strings.TrimSpace(id), tenantID)
 }

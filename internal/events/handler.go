@@ -28,6 +28,10 @@ func (h *Handler) List(c *gin.Context) {
 
 	events, err := h.service.List(c.Request.Context(), user.TenantID)
 	if err != nil {
+		if isInvalidIDError(err) {
+			common.GinError(c, http.StatusBadRequest, err.Error())
+			return
+		}
 		common.GinError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -70,6 +74,10 @@ func (h *Handler) Show(c *gin.Context) {
 		return
 	}
 	if err != nil {
+		if isInvalidIDError(err) {
+			common.GinError(c, http.StatusBadRequest, err.Error())
+			return
+		}
 		common.GinError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -124,6 +132,11 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	common.GinJSON(c, http.StatusOK, common.Response{Data: event})
+}
+
+func isInvalidIDError(err error) bool {
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "invalid tenant id") || strings.Contains(message, "invalid event id")
 }
 
 func (h *Handler) Delete(c *gin.Context) {
