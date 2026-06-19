@@ -9,6 +9,7 @@ type Config struct {
 	SupabaseAnonKey    string
 	SupabaseServiceKey string
 	CORSAllowedOrigins string
+	APIKey             string
 	BrevoAPIKey        string
 	BrevoFromName      string
 	BrevoSMTPHost      string
@@ -27,6 +28,7 @@ func Load() Config {
 		SupabaseAnonKey:    GetEnv("SUPABASE_ANON_KEY", GetEnv("SUPABASE_KEY", "")),
 		SupabaseServiceKey: GetEnv("SUPABASE_SERVICE_ROLE_KEY", ""),
 		CORSAllowedOrigins: GetEnv("CORS_ALLOWED_ORIGINS", "*"),
+		APIKey:             GetEnv("INVITELY_API_KEY", ""),
 		BrevoAPIKey:        GetEnv("BREVO_API_KEY", ""),
 		BrevoFromName:      GetEnv("BREVO_FROM_NAME", "Invitely"),
 		BrevoSMTPHost:      GetEnv("BREVO_SMTP_HOST", "smtp-relay.brevo.com"),
