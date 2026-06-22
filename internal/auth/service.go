@@ -70,12 +70,19 @@ func (s *Service) EnsureUserFromToken(ctx context.Context, token string) (User, 
 }
 
 func (s *Service) ensureUser(ctx context.Context, supabaseUser SupabaseUser, name string, role string) (User, error) {
+	supabaseUser.ID = strings.TrimSpace(supabaseUser.ID)
+	supabaseUser.Email = strings.ToLower(strings.TrimSpace(supabaseUser.Email))
+
+	if supabaseUser.ID == "" && supabaseUser.Email == "" {
+		return User{}, errors.New("supabase user is missing id and email")
+	}
+
 	var user User
 	err := s.db.QueryRowContext(ctx, `
 		select id, coalesce(tenant_id::text, ''), coalesce(supabase_user_id::text, ''), email, name, role
 		from users
-		where supabase_user_id = $1 or email = $2
-	`, supabaseUser.ID, strings.ToLower(supabaseUser.Email)).Scan(
+		where supabase_user_id = nullif($1, '')::uuid or email = $2
+	`, supabaseUser.ID, supabaseUser.Email).Scan(
 		&user.ID,
 		&user.TenantID,
 		&user.SupabaseUserID,
@@ -121,8 +128,8 @@ func (s *Service) ensureUser(ctx context.Context, supabaseUser SupabaseUser, nam
 
 	_, err = s.db.ExecContext(ctx, `
 		insert into users (id, tenant_id, supabase_user_id, email, name, role)
-		values ($1, nullif($2, '')::uuid, $3, $4, $5, $6)
-	`, userID, tenantID, supabaseUser.ID, strings.ToLower(supabaseUser.Email), name, role)
+		values ($1, nullif($2, '')::uuid, nullif($3, '')::uuid, $4, $5, $6)
+	`, userID, tenantID, supabaseUser.ID, supabaseUser.Email, name, role)
 	if err != nil {
 		return User{}, err
 	}
@@ -131,7 +138,7 @@ func (s *Service) ensureUser(ctx context.Context, supabaseUser SupabaseUser, nam
 		ID:             userID,
 		TenantID:       tenantID,
 		SupabaseUserID: supabaseUser.ID,
-		Email:          strings.ToLower(supabaseUser.Email),
+		Email:          supabaseUser.Email,
 		Name:           name,
 		Role:           role,
 	}, nil

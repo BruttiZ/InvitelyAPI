@@ -52,7 +52,9 @@ func Register(router *gin.Engine, cfg config.Config, db *sql.DB) {
 		common.GinJSON(c, http.StatusOK, common.Response{Data: map[string]string{"status": "ok"}})
 	})
 
-	router.Use(middleware.GinAPIKey(cfg.APIKey))
+	if cfg.APIKey != "" {
+		router.Use(middleware.GinAPIKey(cfg.APIKey))
+	}
 
 	router.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusTemporaryRedirect, "/swagger")
