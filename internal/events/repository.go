@@ -27,11 +27,11 @@ func (r *PostgresRepository) Create(ctx context.Context, event Event) (Event, er
 	query := `
 		insert into events (
 			id, tenant_id, title, name, description, starts_at, ends_at, location, venue_name, address,
-			slug, status, timezone, hero, content, theme, gallery, seo, template_id, image
+			slug, status, timezone, hero, content, theme, gallery, seo, image
 		)
 		values (
 			$1, $2, $3, $3, $4, $5, $6, $7, $7, $7,
-			$8, 'published', 'America/Sao_Paulo', $9::json, $10::json, $11::json, $12::json, $13::json, $14, $15
+			$8, 'published', 'America/Sao_Paulo', $9::json, $10::json, $11::json, $12::json, $13::json, $14
 		)
 		returning id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id::text, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())`
 	var endsAt any
@@ -58,7 +58,6 @@ func (r *PostgresRepository) Create(ctx context.Context, event Event) (Event, er
 		theme,
 		emptyArray,
 		seo,
-		event.TemplateID,
 		event.Image,
 	).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.Status, &event.TemplateID, scanJSON(&event.Theme), &event.Image, &event.CreatedAt, &event.UpdatedAt)
 
@@ -143,9 +142,8 @@ func (r *PostgresRepository) Update(ctx context.Context, event Event) (Event, er
 			location = $7,
 			venue_name = $7,
 			address = $7,
-			template_id = $8,
-			theme = $9::json,
-			image = $10,
+			theme = $8::json,
+			image = $9,
 			updated_at = now()
 		where id = $1 and tenant_id = $2
 		returning id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id::text, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())`
@@ -161,7 +159,6 @@ func (r *PostgresRepository) Update(ctx context.Context, event Event) (Event, er
 		event.StartsAt,
 		endsAt,
 		event.Location,
-		event.TemplateID,
 		mustJSON(coalesceAny(event.Theme, map[string]string{})),
 		event.Image,
 	).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.Status, &event.TemplateID, scanJSON(&event.Theme), &event.Image, &event.CreatedAt, &event.UpdatedAt)
