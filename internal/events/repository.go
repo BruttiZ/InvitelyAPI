@@ -33,7 +33,7 @@ func (r *PostgresRepository) Create(ctx context.Context, event Event) (Event, er
 			$1, $2, $3, $3, $4, $5, $6, $7, $7, $7,
 			$8, 'published', 'America/Sao_Paulo', $9::json, $10::json, $11::json, $12::json, $13::json, $14, $15
 		)
-		returning id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())`
+		returning id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id::text, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())`
 	var endsAt any
 	if !event.EndsAt.IsZero() {
 		endsAt = event.EndsAt
@@ -115,7 +115,7 @@ func (j *jsonTarget) Scan(src any) error {
 func (r *PostgresRepository) FindByID(ctx context.Context, id string) (Event, error) {
 	var event Event
 	query := `
-		select id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())
+		select id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id::text, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())
 		from events
 		where id = $1`
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.Status, &event.TemplateID, scanJSON(&event.Theme), &event.Image, &event.CreatedAt, &event.UpdatedAt)
@@ -125,7 +125,7 @@ func (r *PostgresRepository) FindByID(ctx context.Context, id string) (Event, er
 func (r *PostgresRepository) FindPublicBySlug(ctx context.Context, slug string) (Event, error) {
 	var event Event
 	query := `
-		select id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())
+		select id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id::text, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())
 		from events
 		where slug = $1`
 	err := r.db.QueryRowContext(ctx, query, slug).Scan(&event.ID, &event.TenantID, &event.Title, &event.Description, &event.StartsAt, &event.EndsAt, &event.Location, &event.Slug, &event.Status, &event.TemplateID, scanJSON(&event.Theme), &event.Image, &event.CreatedAt, &event.UpdatedAt)
@@ -148,7 +148,7 @@ func (r *PostgresRepository) Update(ctx context.Context, event Event) (Event, er
 			image = $10,
 			updated_at = now()
 		where id = $1 and tenant_id = $2
-		returning id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())`
+		returning id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id::text, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())`
 	var endsAt any
 	if !event.EndsAt.IsZero() {
 		endsAt = event.EndsAt
@@ -187,7 +187,7 @@ func (r *PostgresRepository) Delete(ctx context.Context, id string, tenantID str
 
 func (r *PostgresRepository) List(ctx context.Context, tenantID string) ([]Event, error) {
 	query := `
-		select id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())
+		select id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id::text, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())
 		from events
 		where tenant_id::text = $1
 		order by starts_at desc`
