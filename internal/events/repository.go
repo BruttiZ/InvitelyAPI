@@ -189,7 +189,7 @@ func (r *PostgresRepository) List(ctx context.Context, tenantID string) ([]Event
 	query := `
 		select id, tenant_id, coalesce(title, name, ''), coalesce(description, ''), coalesce(starts_at, created_at, now()), coalesce(ends_at, starts_at, created_at, now()), coalesce(location, venue_name, ''), coalesce(slug, ''), coalesce(status, ''), coalesce(template_id, ''), coalesce(theme::text, '{}'), coalesce(image, ''), coalesce(created_at, now()), coalesce(updated_at, now())
 		from events
-		where tenant_id = $1
+		where tenant_id::text = $1
 		order by starts_at desc`
 	rows, err := r.db.QueryContext(ctx, query, tenantID)
 	if err != nil {
